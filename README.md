@@ -1,4 +1,4 @@
-#Society for Ancient Greek Philosophy Member Database Management System
+# Society for Ancient Greek Philosophy Member Database Management System
 
 sagp/
 │
