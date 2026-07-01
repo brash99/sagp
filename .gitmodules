@@ -3,4 +3,7 @@
 	url = git@github.com:brash99/sagp_member_db.git
 [submodule "sagp_member_manager"]
 	path = sagp_member_manager
-	url = git@github.com:brash99/sagp_member_manager.git
+        url = git@github.com:brash99/sagp_member_manager.git
+[submodule "sagp-website-archive"]
+	path = sagp-website-archive
+	url = git@github.com:brash99/sagp-website-archive.git
