@@ -1,6 +1,6 @@
 [submodule "sagp_member_db"]
 	path = sagp_member_db
-	url = git@github.com:YOUR_USERNAME/sagp_member_db.git
+	url = git@github.com:brash99/sagp_member_db.git
 [submodule "sagp_member_manager"]
 	path = sagp_member_manager
-	url = git@github.com:YOUR_USERNAME/sagp_member_manager.git
+	url = git@github.com:brash99/sagp_member_manager.git
