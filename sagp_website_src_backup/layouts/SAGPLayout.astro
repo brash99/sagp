@@ -1,0 +1,32 @@
+---
+const { title = "Society for Ancient Greek Philosophy" } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{title}</title>
+  <link rel="stylesheet" href="/src/styles/global.css" />
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="/">
+      <img src="/assets/sagp-logo.png" alt="SAGP" />
+    </a>
+
+    <nav>
+      <a href="/">Home</a>
+      <a href="/who-we-are/">Who We Are</a>
+      <a href="/events/">Events</a>
+      <a href="/membership/">Membership</a>
+      <a href="/contact/">Contact</a>
+    </nav>
+  </header>
+
+  <main>
+    <slot />
+  </main>
+</body>
+</html>
