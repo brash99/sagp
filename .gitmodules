@@ -7,3 +7,6 @@
 [submodule "sagp-website-archive"]
 	path = sagp-website-archive
 	url = git@github.com:brash99/sagp-website-archive.git
+[submodule "sagp_website"]
+	path = sagp_website
+	url = git@github.com:sagp-org/sagp_website.git
