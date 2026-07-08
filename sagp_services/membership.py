@@ -2,46 +2,37 @@ from __future__ import annotations
 
 import sqlite3
 from collections import Counter
-from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from sagp_core import MembershipUpdateRequest
-
-from .validation import ValidationResult
-
-
-@dataclass(frozen=True)
-class MemberRecord:
-    data: dict[str, Any]
-
-    @property
-    def person_id(self) -> str:
-        return str(self.data.get("person_id") or "")
-
-    @property
-    def display_name(self) -> str:
-        return str(self.data.get("display_name") or "")
-
-    @property
-    def email(self) -> str:
-        return str(
-            self.data.get("primary_email")
-            or self.data.get("secondary_email")
-            or ""
-        ).strip()
+from sagp_core.membership import (
+    MemberRecord,
+    MembershipStatistics,
+    MembershipUpdateRequest,
+)
 
 
 class MembershipService:
     """
-    Service layer for the authoritative operational membership database.
+    Service layer for SAGP canonical member records.
 
-    The Membership Manager owns the live database. This service is the platform
-    interface for reading membership state and, later, applying reviewed updates.
+    Constitutional scope:
+      - owns member lookup, member facts, membership expiration, and statistics
+      - does not own communications, audiences, email export, or payment records
+
+    Membership state rule:
+      - canonical fact: membership_expiration_year, currently stored in the DB
+        as last_paid_year
+      - derived meaning: current/past status
+      - grace rule: current if expiration_year >= current_year - 1
     """
 
-    ALLOWED_UPDATE_FIELDS = {
+    DB_EXPIRATION_FIELD = "last_paid_year"
+    PUBLIC_EXPIRATION_FIELD = "membership_expiration_year"
+    GRACE_YEARS = 1
+
+    DETAIL_UPDATE_FIELDS = {
         "display_name",
         "first_name",
         "last_name",
@@ -53,46 +44,22 @@ class MembershipService:
         "state_province",
         "country",
         "region",
-        "membership_status",
-        "member_since",
-        "last_paid_year",
-        "active",
         "notes",
     }
 
-    VALID_MEMBERSHIP_STATUSES = {
-        "",
-        "Current Member",
-        "Past Member",
-        "Executive and Donors",
-        "Unknown A",
-        "Unknown B",
+    EXPIRATION_UPDATE_FIELDS = {
+        PUBLIC_EXPIRATION_FIELD,
+        DB_EXPIRATION_FIELD,
     }
 
-    SELECT_MEMBER_FIELDS = """
-        person_id,
-        display_name,
-        first_name,
-        last_name,
-        institution,
-        primary_email,
-        secondary_email,
-        phone,
-        city,
-        state_province,
-        country,
-        region,
-        membership_status,
-        original_membership_code,
-        member_since,
-        last_paid_year,
-        active,
-        notes,
-        updated_at
-    """
+    ALLOWED_UPDATE_FIELDS = DETAIL_UPDATE_FIELDS | EXPIRATION_UPDATE_FIELDS
 
     def __init__(self, db_path: str | Path = "sagp_member_manager/output/sagp_members.db"):
         self.db_path = Path(db_path)
+
+    # ------------------------------------------------------------------
+    # Construction
+    # ------------------------------------------------------------------
 
     def _connect(self) -> sqlite3.Connection:
         if not self.db_path.exists():
@@ -113,32 +80,69 @@ class MembershipService:
         except (TypeError, ValueError):
             return None
 
+    def _derived_status(self, expiration_year: int | None, current_year: int | None = None) -> str:
+        if expiration_year is None:
+            return ""
+
+        year = current_year or datetime.now().year
+        if expiration_year >= year - self.GRACE_YEARS:
+            return "Current Member"
+        return "Past Member"
+
     def _row_to_member_record(self, row: sqlite3.Row) -> MemberRecord:
         data = {key: self._display(row[key]) for key in row.keys()}
-        data["search_text"] = " ".join(
-            [
-                data["display_name"],
-                data["first_name"],
-                data["last_name"],
-                data["institution"],
-                data["primary_email"],
-                data["secondary_email"],
-                data["region"],
-                data["membership_status"],
-                data["last_paid_year"],
-            ]
-        ).lower()
+
+        expiration = self._as_int(data.get(self.DB_EXPIRATION_FIELD))
+        data[self.PUBLIC_EXPIRATION_FIELD] = "" if expiration is None else str(expiration)
+        data["derived_membership_status"] = self._derived_status(expiration)
+
+        data["search_text"] = " ".join([
+            data.get("display_name", ""),
+            data.get("first_name", ""),
+            data.get("last_name", ""),
+            data.get("institution", ""),
+            data.get("primary_email", ""),
+            data.get("secondary_email", ""),
+            data.get("region", ""),
+            data.get("membership_status", ""),
+            data.get("derived_membership_status", ""),
+            data.get(self.DB_EXPIRATION_FIELD, ""),
+            data.get(self.PUBLIC_EXPIRATION_FIELD, ""),
+        ]).lower()
+
         return MemberRecord(data)
 
+    # ------------------------------------------------------------------
+    # Read operations
+    # ------------------------------------------------------------------
+
     def list_members(self) -> list[MemberRecord]:
-        with self._connect() as con:
-            rows = con.execute(
-                f"""
-                SELECT {self.SELECT_MEMBER_FIELDS}
-                FROM members
-                ORDER BY display_name
-                """
-            ).fetchall()
+        con = self._connect()
+        rows = con.execute("""
+            SELECT
+                person_id,
+                display_name,
+                first_name,
+                last_name,
+                institution,
+                primary_email,
+                secondary_email,
+                phone,
+                city,
+                state_province,
+                country,
+                region,
+                membership_status,
+                original_membership_code,
+                member_since,
+                last_paid_year,
+                active,
+                notes,
+                updated_at
+            FROM members
+            ORDER BY display_name
+        """).fetchall()
+        con.close()
 
         return [self._row_to_member_record(row) for row in rows]
 
@@ -156,179 +160,105 @@ class MembershipService:
         return matches[:limit]
 
     def get_member(self, person_id: str) -> MemberRecord | None:
-        person_id = str(person_id or "").strip()
-        if not person_id:
+        con = self._connect()
+        row = con.execute("""
+            SELECT
+                person_id,
+                display_name,
+                first_name,
+                last_name,
+                institution,
+                primary_email,
+                secondary_email,
+                phone,
+                city,
+                state_province,
+                country,
+                region,
+                membership_status,
+                original_membership_code,
+                member_since,
+                last_paid_year,
+                active,
+                notes,
+                updated_at
+            FROM members
+            WHERE person_id = ?
+        """, (person_id,)).fetchone()
+        con.close()
+
+        if row is None:
             return None
-
-        with self._connect() as con:
-            row = con.execute(
-                f"""
-                SELECT {self.SELECT_MEMBER_FIELDS}
-                FROM members
-                WHERE person_id = ?
-                """,
-                (person_id,),
-            ).fetchone()
-
-        return self._row_to_member_record(row) if row else None
+        return self._row_to_member_record(row)
 
     def statistics(self) -> dict[str, Any]:
         members = self.list_members()
         current_year = datetime.now().year
 
-        status_counts = Counter(
+        stored_status_counts = Counter(
             member.data.get("membership_status") or "(blank)"
             for member in members
         )
 
-        last_paid_counts = Counter(
-            member.data.get("last_paid_year") or "(blank)"
+        derived_status_counts = Counter(
+            member.data.get("derived_membership_status") or "(blank)"
+            for member in members
+        )
+
+        expiration_counts = Counter(
+            member.data.get(self.PUBLIC_EXPIRATION_FIELD) or "(blank)"
             for member in members
         )
 
         members_with_email = [member for member in members if member.email]
 
-        paid_current = [
-            member
-            for member in members
-            if member.data.get("membership_status") == "Current Member"
+        current_members = [
+            member for member in members
+            if member.data.get("derived_membership_status") == "Current Member"
         ]
 
-        expired = [
-            member
-            for member in members
-            if member.data.get("membership_status") == "Past Member"
+        past_members = [
+            member for member in members
+            if member.data.get("derived_membership_status") == "Past Member"
         ]
 
-        paid_this_year = [
-            member
-            for member in members
-            if self._as_int(member.data.get("last_paid_year")) == current_year
+        paid_or_renewed_this_year = [
+            member for member in members
+            if member.expiration_year == current_year
         ]
 
         not_renewed_this_year = [
-            member
-            for member in members
-            if self._as_int(member.data.get("last_paid_year")) is not None
-            and self._as_int(member.data.get("last_paid_year")) < current_year
+            member for member in members
+            if member.expiration_year is not None
+            and member.expiration_year < current_year
         ]
 
-        return {
-            "generated_at": datetime.now().isoformat(),
-            "source_database": str(self.db_path),
-            "current_year": current_year,
-            "summary": {
+        stats = MembershipStatistics(
+            generated_at=datetime.now().isoformat(),
+            source_database=str(self.db_path),
+            current_year=current_year,
+            summary={
                 "total_members": len(members),
                 "members_with_email": len(members_with_email),
-                "current_paid_members": len(paid_current),
-                "expired_members": len(expired),
-                "paid_or_renewed_this_year": len(paid_this_year),
+                "current_paid_members": len(current_members),
+                "expired_members": len(past_members),
+                "paid_or_renewed_this_year": len(paid_or_renewed_this_year),
                 "not_renewed_this_year": len(not_renewed_this_year),
                 "unknown_or_blank_status": (
-                    status_counts.get("Unknown A", 0)
-                    + status_counts.get("Unknown B", 0)
-                    + status_counts.get("(blank)", 0)
+                    stored_status_counts.get("Unknown A", 0)
+                    + stored_status_counts.get("Unknown B", 0)
+                    + stored_status_counts.get("(blank)", 0)
                 ),
             },
-            "membership_status_counts": dict(sorted(status_counts.items())),
-            "last_paid_year_counts": dict(
-                sorted(last_paid_counts.items(), key=lambda kv: str(kv[0]))
+            membership_status_counts=dict(sorted(stored_status_counts.items())),
+            expiration_year_counts=dict(
+                sorted(expiration_counts.items(), key=lambda kv: str(kv[0]))
             ),
-        }
-
-    def validate_update_request(
-        self,
-        request: MembershipUpdateRequest,
-    ) -> ValidationResult:
-        errors: list[str] = []
-        warnings: list[str] = []
-
-        person_id = str(request.person_id or "").strip()
-        if not person_id:
-            errors.append("person_id is required.")
-
-        if not request.proposed_changes:
-            errors.append("proposed_changes may not be empty.")
-
-        member = self.get_member(person_id)
-        if person_id and member is None:
-            errors.append(f"No member found for person_id={person_id!r}.")
-
-        for field in request.proposed_changes:
-            if field not in self.ALLOWED_UPDATE_FIELDS:
-                errors.append(f"Field {field!r} may not be updated.")
-
-        if "membership_status" in request.proposed_changes:
-            status = str(request.proposed_changes["membership_status"] or "")
-            if status not in self.VALID_MEMBERSHIP_STATUSES:
-                errors.append(f"Invalid membership_status: {status!r}.")
-
-        if "last_paid_year" in request.proposed_changes:
-            value = request.proposed_changes["last_paid_year"]
-            if value not in ("", None):
-                try:
-                    year = int(value)
-                    if year < 1900 or year > 2100:
-                        errors.append("last_paid_year must be between 1900 and 2100.")
-                except (TypeError, ValueError):
-                    errors.append("last_paid_year must be blank or an integer year.")
-
-        if "reason" in request.proposed_changes:
-            errors.append("reason belongs on the request, not in proposed_changes.")
-
-        if not str(request.reason or "").strip():
-            warnings.append("No reason was provided for this update request.")
-
-        if not str(request.requested_by or "").strip():
-            warnings.append("No requester was provided for this update request.")
-
-        return ValidationResult(
-            valid=not errors,
-            errors=errors,
-            warnings=warnings,
         )
 
-    def preview_update_request(
-        self,
-        request: MembershipUpdateRequest,
-    ) -> dict[str, Any]:
-        member = self.get_member(request.person_id)
-        validation = self.validate_update_request(request)
-
-        before = member.data if member else {}
-        after = dict(before)
-        if validation.valid:
-            for key, value in request.proposed_changes.items():
-                after[key] = "" if value is None else str(value)
-
-        return {
-            "request": request.to_dict(),
-            "valid": validation.valid,
-            "errors": validation.errors,
-            "warnings": validation.warnings,
-            "before": before,
-            "after": after,
-        }
-
-    def apply_update_request(
-        self,
-        request: MembershipUpdateRequest,
-    ) -> dict[str, Any]:
-        """
-        Validate and preview a membership update request.
-
-        Actual database mutation is intentionally deferred until audit logging is
-        implemented. This prevents silent membership edits from entering the
-        platform without provenance.
-        """
-        preview = self.preview_update_request(request)
-        if not preview["valid"]:
-            raise ValueError("; ".join(preview["errors"]))
-
-        raise NotImplementedError(
-            "Membership update application is intentionally disabled until "
-            "audit logging is implemented."
-        )
+        data = stats.to_dict()
+        data["derived_membership_status_counts"] = dict(sorted(derived_status_counts.items()))
+        return data
 
     def export_records_payload(self) -> dict[str, Any]:
         members = self.list_members()
@@ -337,5 +267,129 @@ class MembershipService:
             "generated_at": datetime.now().isoformat(),
             "source_database": str(self.db_path),
             "member_count": len(members),
-            "members": [member.data for member in members],
+            "members": [member.to_dict() for member in members],
         }
+
+    # ------------------------------------------------------------------
+    # Domain operations
+    # ------------------------------------------------------------------
+
+    def build_member_detail_update_request(
+        self,
+        person_id: str,
+        proposed_changes: dict[str, Any],
+        reason: str,
+        requested_by: str,
+        source: str = "manual",
+        notes: str | None = None,
+    ) -> MembershipUpdateRequest:
+        return MembershipUpdateRequest(
+            person_id=person_id,
+            proposed_changes=proposed_changes,
+            reason=reason,
+            requested_by=requested_by,
+            source=source,
+            notes=notes,
+        )
+
+    def build_membership_expiration_update_request(
+        self,
+        person_id: str,
+        expiration_year: int | str,
+        reason: str,
+        requested_by: str,
+        source: str = "manual",
+        notes: str | None = None,
+    ) -> MembershipUpdateRequest:
+        return MembershipUpdateRequest(
+            person_id=person_id,
+            proposed_changes={
+                self.PUBLIC_EXPIRATION_FIELD: expiration_year,
+            },
+            reason=reason,
+            requested_by=requested_by,
+            source=source,
+            notes=notes,
+        )
+
+    # ------------------------------------------------------------------
+    # Validation / preview
+    # ------------------------------------------------------------------
+
+    def validate_update_request(self, request: MembershipUpdateRequest) -> list[str]:
+        errors: list[str] = []
+
+        if not request.person_id.strip():
+            errors.append("person_id is required.")
+
+        if not request.proposed_changes:
+            errors.append("proposed_changes may not be empty.")
+
+        if self.get_member(request.person_id) is None:
+            errors.append(f"No member found for person_id={request.person_id!r}.")
+
+        for field in request.proposed_changes:
+            if field not in self.ALLOWED_UPDATE_FIELDS:
+                errors.append(f"Field {field!r} may not be updated by MembershipService.")
+
+        for field in self.EXPIRATION_UPDATE_FIELDS:
+            if field in request.proposed_changes:
+                value = request.proposed_changes[field]
+                try:
+                    year = int(value)
+                    if year < 1900 or year > 2100:
+                        errors.append("membership expiration year must be between 1900 and 2100.")
+                except (TypeError, ValueError):
+                    errors.append("membership expiration year must be an integer year.")
+
+        return errors
+
+    def preview_update_request(self, request: MembershipUpdateRequest) -> dict[str, Any]:
+        member = self.get_member(request.person_id)
+        errors = self.validate_update_request(request)
+
+        before = member.to_dict() if member else {}
+        after = dict(before)
+
+        if not errors:
+            for key, value in request.proposed_changes.items():
+                canonical_key = (
+                    self.DB_EXPIRATION_FIELD
+                    if key == self.PUBLIC_EXPIRATION_FIELD
+                    else key
+                )
+                after[canonical_key] = "" if value is None else str(value)
+
+            expiration = self._as_int(after.get(self.DB_EXPIRATION_FIELD))
+            after[self.PUBLIC_EXPIRATION_FIELD] = "" if expiration is None else str(expiration)
+            after["derived_membership_status"] = self._derived_status(expiration)
+
+        return {
+            "request": request.to_dict(),
+            "valid": not errors,
+            "errors": errors,
+            "before": before,
+            "after": after,
+        }
+
+    # ------------------------------------------------------------------
+    # Future write operation
+    # ------------------------------------------------------------------
+
+    def apply_update_request(self, request: MembershipUpdateRequest) -> dict[str, Any]:
+        """
+        Intentionally not enabled yet.
+
+        Future implementation should:
+          1. validate request
+          2. create audit record
+          3. update database
+          4. return before/after state
+        """
+
+        preview = self.preview_update_request(request)
+        raise NotImplementedError(
+            "MembershipService.apply_update_request() is intentionally disabled "
+            "until audit logging and write policy are implemented. "
+            f"Preview valid={preview['valid']}."
+        )

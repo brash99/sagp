@@ -25,6 +25,8 @@ from .io import (
 )
 
 __all__ = [
+    "MembershipStatistics",
+    "MemberRecord",
     "Audience",
     "Communication",
     "DeliveryStatus",
