@@ -1,12 +1,15 @@
-[submodule "sagp_member_db"]
+[submodule "sagp_member_import"]
 	path = sagp_member_import
 	url = git@github.com:brash99/sagp_member_import.git
+
 [submodule "sagp_member_manager"]
 	path = sagp_member_manager
-        url = git@github.com:brash99/sagp_member_manager.git
+	url = git@github.com:brash99/sagp_member_manager.git
+
 [submodule "sagp-website-archive"]
 	path = sagp-website-archive
 	url = git@github.com:brash99/sagp-website-archive.git
+
 [submodule "sagp_website"]
 	path = sagp_website
 	url = git@github.com:sagp-org/sagp_website.git
