@@ -1,3 +1,5 @@
+from .membership import MembershipUpdateRequest
+
 from .communication import (
     Audience,
     Communication,
@@ -28,6 +30,7 @@ __all__ = [
     "DeliveryStatus",
     "Message",
     "Recipient",
+    "MembershipUpdateRequest",
     "ArtifactStoreContract",
     "CommunicationEngineContract",
     "MembershipEngineContract",
