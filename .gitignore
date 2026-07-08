@@ -19,3 +19,6 @@ output/
 # Node/build artifacts at umbrella level
 node_modules/
 dist/
+
+# Local database snapshots
+backups/
