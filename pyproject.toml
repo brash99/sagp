@@ -15,4 +15,5 @@ dependencies = [
 packages = [
     "sagp_core",
     "sagp_engines",
+    "sagp_services",
 ]
