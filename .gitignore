@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# macOS
+.DS_Store
+
+# Databases
+*.db
+*.db-shm
+*.db-wal
+
+# Generated SAGP artifacts
+output/
+
+# Node/build artifacts at umbrella level
+node_modules/
+dist/

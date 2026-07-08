@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sagp-platform"
+version = "0.1.0"
+description = "SAGP platform core, engines, and workspaces"
+requires-python = ">=3.10"
+dependencies = [
+    "PySide6",
+]
+
+[tool.setuptools]
+packages = [
+    "sagp_core",
+    "sagp_engines",
+]
