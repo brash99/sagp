@@ -378,18 +378,59 @@ class MembershipService:
 
     def apply_update_request(self, request: MembershipUpdateRequest) -> dict[str, Any]:
         """
-        Intentionally not enabled yet.
+        Apply a validated membership update request to the operational database.
 
-        Future implementation should:
-          1. validate request
-          2. create audit record
-          3. update database
-          4. return before/after state
+        The canonical membership fact is membership_expiration_year, stored in
+        the current SQLite schema as last_paid_year. For compatibility with the
+        existing desktop manager and current audience-generation scripts, this
+        method also mirrors the derived status into the legacy membership_status
+        column when the expiration year changes.
         """
 
         preview = self.preview_update_request(request)
-        raise NotImplementedError(
-            "MembershipService.apply_update_request() is intentionally disabled "
-            "until audit logging and write policy are implemented. "
-            f"Preview valid={preview['valid']}."
-        )
+        if not preview["valid"]:
+            return preview
+
+        updates: dict[str, Any] = {}
+
+        for key, value in request.proposed_changes.items():
+            db_key = (
+                self.DB_EXPIRATION_FIELD
+                if key == self.PUBLIC_EXPIRATION_FIELD
+                else key
+            )
+            updates[db_key] = "" if value is None else str(value)
+
+        if self.DB_EXPIRATION_FIELD in updates:
+            expiration = self._as_int(updates[self.DB_EXPIRATION_FIELD])
+            updates["membership_status"] = self._derived_status(expiration)
+
+        updates["updated_at"] = datetime.now().isoformat()
+
+        if not updates:
+            return preview
+
+        assignments = ", ".join(f"{field} = ?" for field in updates)
+        values = [updates[field] for field in updates]
+        values.append(request.person_id)
+
+        con = self._connect()
+        try:
+            con.execute(
+                f"UPDATE members SET {assignments} WHERE person_id = ?",
+                values,
+            )
+            con.commit()
+        finally:
+            con.close()
+
+        after_member = self.get_member(request.person_id)
+
+        return {
+            "request": request.to_dict(),
+            "valid": True,
+            "errors": [],
+            "before": preview["before"],
+            "after": after_member.to_dict() if after_member else {},
+            "applied": True,
+        }
