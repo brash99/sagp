@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import subprocess
+import time
 from pathlib import Path
 
 import yaml
@@ -137,6 +138,9 @@ def main():
         print("No website changes to commit.")
 
     if not args.no_watch:
+        print()
+        print("Waiting briefly for GitHub Actions to register the Pages deployment...")
+        time.sleep(5)
         run(["gh", "run", "watch"], cwd=WEBSITE, allow_fail=True)
 
     run(["git", "add", "sagp_website", "scripts/process_publication_update.py"], cwd=ROOT)

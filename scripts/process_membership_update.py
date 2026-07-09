@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import subprocess
+import time
 from pathlib import Path
 
 from sagp_core import MembershipUpdateRequest
@@ -125,6 +126,9 @@ def main():
         print("No website data changes to commit.")
 
     if not args.no_watch:
+        print()
+        print("Waiting briefly for GitHub Actions to register the Pages deployment...")
+        time.sleep(5)
         try:
             run(["gh", "run", "watch"], cwd=WEBSITE)
         except subprocess.CalledProcessError:
