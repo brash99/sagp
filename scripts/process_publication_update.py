@@ -61,8 +61,10 @@ def main():
     if request.get("request_type") != "publication_update":
         raise SystemExit("Not a publication_update request.")
 
-    if request.get("publication_type") != "event":
-        raise SystemExit("This first processor only supports event updates.")
+    publication_type = request.get("publication_type")
+
+    if publication_type not in {"event", "call"}:
+        raise SystemExit("This processor currently supports event and call updates.")
 
     source_yaml = request["context"]["source_yaml"]
     yaml_path = WEBSITE / source_yaml
@@ -71,7 +73,7 @@ def main():
         raise SystemExit(f"Source YAML not found: {yaml_path}")
 
     data = yaml.safe_load(yaml_path.read_text(encoding="utf-8"))
-    event = data["event"]
+    publication = data[publication_type]
 
     print()
     print("=" * 72)
@@ -88,7 +90,7 @@ def main():
 
     for field, change in request["changes"].items():
         expected_before = change.get("before", "")
-        current_before = get_nested(event, field)
+        current_before = get_nested(publication, field)
         after = change.get("after", "")
 
         print(field.replace("_", " ").replace(".", " / ").title())
@@ -110,7 +112,7 @@ def main():
         return
 
     for field, change in request["changes"].items():
-        set_nested(event, field, change.get("after", ""))
+        set_nested(publication, field, change.get("after", ""))
 
     yaml_path.write_text(
         yaml.safe_dump(data, sort_keys=False, allow_unicode=True, width=88),
