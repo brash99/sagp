@@ -84,13 +84,17 @@ def load_calls():
         if call.get("deadlines"):
             deadline = normalize_date(call["deadlines"][0].get("date"))
 
+        hero = call.get("hero", {})
+
         calls.append({
             "kind": "call",
             "id": path.stem,
-            "title": call.get("hero", {}).get("title") or call.get("title") or path.stem,
+            "title": call.get("title", ""),
             "status": call.get("status", ""),
+            "summary": call.get("summary", ""),
             "deadline": deadline,
-            "detail": call.get("summary", ""),
+            "hero": hero,
+            "deadlines": call.get("deadlines", []),
             "source_yaml": str(path.relative_to(WEBSITE)),
         })
 
@@ -104,7 +108,10 @@ def main():
     }
 
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
-    OUTPUT.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+    OUTPUT.write_text(
+        json.dumps(payload, indent=2, ensure_ascii=False, default=str),
+        encoding="utf-8",
+    )
 
     print(OUTPUT)
     print(f"{len(payload['events'])} events")
