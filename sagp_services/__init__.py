@@ -12,3 +12,5 @@ __all__ = [
     "KnowledgeObjectSummary",
     "MembershipService",
 ]
+
+from .ai import AIService
