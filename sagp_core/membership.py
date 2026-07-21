@@ -84,3 +84,24 @@ class MembershipUpdateRequest:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "MembershipUpdateRequest":
         return cls(**data)
+
+
+@dataclass(frozen=True)
+class MembershipCreateRequest:
+    """Reviewable request to create one canonical member record."""
+
+    proposed_member_data: Dict[str, Any]
+    reason: str
+    requested_by: str
+    request_type: str = "membership_create"
+    request_id: str = field(default_factory=lambda: f"mcr_{uuid4().hex[:12]}")
+    requested_at: str = field(default_factory=now_iso)
+    source: str = "manual"
+    notes: Optional[str] = None
+
+    def to_dict(self) -> Dict[str, Any]:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "MembershipCreateRequest":
+        return cls(**data)

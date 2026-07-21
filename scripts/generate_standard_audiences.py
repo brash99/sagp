@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import sqlite3
 from datetime import datetime
 from pathlib import Path
@@ -56,11 +57,27 @@ def save_preset(name, description, criteria, members):
         if member_email(member)
     ]
 
+    existing = None
+    preset = criteria.get("preset")
+    for path in sorted(OUTPUT_DIR.glob("aud_*.json")):
+        try:
+            candidate = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        if candidate.get("criteria", {}).get("preset") == preset:
+            existing = candidate
+            break
+
+    audience_args = {}
+    if existing and existing.get("audience_id"):
+        audience_args["audience_id"] = existing["audience_id"]
+
     audience = Audience(
         name=name,
         description=description,
         criteria=criteria,
         recipients=recipients,
+        **audience_args,
     )
 
     path = save_audience(audience, OUTPUT_DIR)
