@@ -274,3 +274,11 @@ Future capabilities may include:
 Each new capability should integrate naturally into the existing architectural layers rather than introducing parallel structures.
 
 The long-term objective is not simply to build software, but to construct a coherent, extensible, constitution-governed knowledge platform that models how the Society operates and provides a stable foundation for future human and AI collaboration.
+
+---
+
+# Related Operational Architecture
+
+See [SAGP Website: GitHub and GitHub Pages Architecture](website_github_pages_architecture.md)
+for the repository, build, review, deployment, security, and recovery philosophy
+used to publish the website.
