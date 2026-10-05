@@ -1,3 +1,7 @@
+[submodule "sagp_member_db"]
+	path = sagp_member_db
+	url = git@github.com:brash99/sagp_member_db.git
+
 [submodule "sagp_member_import"]
 	path = sagp_member_import
 	url = git@github.com:brash99/sagp_member_import.git
