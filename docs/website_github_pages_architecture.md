@@ -288,18 +288,16 @@ No long-lived deployment password is embedded in the website source.
 The Astro configuration declares:
 
 ```javascript
-site: "https://sagp-org.github.io"
-base: "/sagp_website"
+site: "https://societyforancientgreekphilosophy.org"
 ```
 
-GitHub Pages hosts this project site below the `/sagp_website` path rather than
-at the domain root. Links, assets, browser fetches, and generated routes must
-therefore preserve the configured base path.
+GitHub Pages publishes the project at the Society's custom domain root. Links,
+assets, browser fetches, and generated routes must therefore work from `/`
+without depending on the former `/sagp_website` project path.
 
-Hard-coding root-relative URLs such as `/platform/example.json` may work on a
-different host while failing on GitHub Pages. Website code should use the
-project's established base-path and `platformUrl` conventions so that local
-development and Pages deployment resolve the same resources correctly.
+Website code should use the project's established `sitePath` and `platformUrl`
+conventions so local development, the custom domain, and any future hosting
+arrangement resolve the same resources correctly.
 
 ## What a deployment means
 

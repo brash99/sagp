@@ -155,7 +155,7 @@ def main():
     print("✓ Membership update processed and deployment workflow completed.")
     print()
     print("Check:")
-    print("https://sagp-org.github.io/sagp_website/executive/membership/?v=latest")
+    print("https://societyforancientgreekphilosophy.org/executive/membership/?v=latest")
 
 
 if __name__ == "__main__":

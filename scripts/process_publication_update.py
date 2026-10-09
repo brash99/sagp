@@ -162,7 +162,7 @@ def main():
     print(f"Updated publication : {request.get('publication_title')}")
     print(f"Canonical source    : {source_yaml}")
     print("Check:")
-    print("https://sagp-org.github.io/sagp_website/executive/publishing/?v=latest")
+    print("https://societyforancientgreekphilosophy.org/executive/publishing/?v=latest")
 
 
 if __name__ == "__main__":

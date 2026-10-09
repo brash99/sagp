@@ -478,7 +478,7 @@ class AdminProcessorWindow(QMainWindow):
         try:
             event_type = change.details["event_type"].replace("_", "-")
             year = change.details["year"]
-            url = QUrl(f"http://127.0.0.1:4322/sagp_website/executive/draft-event-preview/{event_type}/{year}/")
+            url = QUrl(f"http://127.0.0.1:4322/executive/draft-event-preview/{event_type}/{year}/")
             self._ensure_preview_server(url.toString())
             if self.event_preview_window is not None:
                 self.event_preview_window.close()
