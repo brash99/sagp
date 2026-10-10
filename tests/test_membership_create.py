@@ -87,6 +87,21 @@ class MembershipCreateTests(unittest.TestCase):
         self.assertEqual(current["derived_membership_status"], "Current Member")
         self.assertEqual(past["derived_membership_status"], "Past Member")
 
+    def test_inactive_member_is_not_counted_as_current_paid(self) -> None:
+        self.insert_existing()
+        year = datetime.now().year
+        with sqlite3.connect(self.db_path) as con:
+            con.execute(
+                "UPDATE members SET active = 0, membership_status = 'Deceased', last_paid_year = ?",
+                (year,),
+            )
+
+        statistics = self.service.statistics()
+
+        self.assertEqual(statistics["summary"]["current_paid_members"], 0)
+        self.assertEqual(statistics["summary"]["paid_or_renewed_this_year"], 0)
+        self.assertEqual(statistics["membership_status_counts"]["Deceased"], 1)
+
     def test_exact_email_duplicate_is_prohibited(self) -> None:
         self.insert_existing(email=" Ada@Example.ORG ")
         preview = self.service.preview_create_request(self.request())

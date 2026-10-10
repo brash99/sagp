@@ -233,7 +233,8 @@ class MembershipService:
 
         current_members = [
             member for member in members
-            if member.data.get("derived_membership_status") == "Current Member"
+            if member.data.get("active") == "1"
+            and member.data.get("derived_membership_status") == "Current Member"
         ]
 
         past_members = [
@@ -243,7 +244,8 @@ class MembershipService:
 
         paid_or_renewed_this_year = [
             member for member in members
-            if member.expiration_year == current_year
+            if member.data.get("active") == "1"
+            and member.expiration_year == current_year
         ]
 
         not_renewed_this_year = [
