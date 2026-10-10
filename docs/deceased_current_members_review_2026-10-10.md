@@ -2,7 +2,7 @@
 
 Prepared October 10, 2026, for Colin Smith and Salvador Escalante.
 
-Five people appeared in SAGP's current paid members list even though authoritative institutional or professional sources report that they have died. Their membership records have been retained for historical and audit purposes, marked inactive, and assigned the stored membership status `Deceased`. Their paid-through years have not been changed.
+Six people appeared in SAGP's current paid members list even though authoritative institutional or professional sources report that they have died. Their membership records have been retained for historical and audit purposes, marked inactive, and assigned the stored membership status `Deceased`. Their paid-through years have not been changed.
 
 | Person | SAGP ID | Paid through | Historical institution | Reported death | Verification source |
 |---|---|---:|---|---|---|
@@ -11,6 +11,7 @@ Five people appeared in SAGP's current paid members list even though authoritati
 | Jeremiah Reedy | SAGP000763 | 2030 | Macalester College | May 28, 2025 | [Macalester College, *Antiquity Now*, Fall 2025](https://www.macalester.edu/classics/wp-content/uploads/sites/561/2026/01/CMME-Newsletter-Antiquity-Now-Fall-2025.pdf) |
 | Mark Morelli | SAGP000926 | 2025 | Loyola Marymount University | May 27, 2026 | [Loyola Marymount University memorial](https://newsroom.lmu.edu/uncategorized/mark-morelli/) |
 | John F. Malcolm | SAGP001072 | 2025 | University of California, Davis | September 10, 2023 | [UC Davis memorial profile](https://philosophy.ucdavis.edu/people/john-malcolm) |
+| Alina Beary | SAGP000872 | 2034 | Biola University | August 2023 | [Biola University memorial](https://www.biola.edu/blogs/biola-news/2023/biola-grieves-passing-of-professor-alina-beary) |
 
 ## Action taken
 
